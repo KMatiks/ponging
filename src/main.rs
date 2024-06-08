@@ -25,7 +25,7 @@ fn spawn_paddles(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
 
-    let shape = Mesh2dHandle(meshes.add(Rectangle::new(50., 100.)));
+    let mut shape = Mesh2dHandle(meshes.add(Rectangle::new(50., 100.)));
     commands.spawn(MaterialMesh2dBundle {
         mesh: shape,
         material: materials.add(Color::rgb(255., 255., 255.)),
@@ -39,7 +39,7 @@ fn spawn_paddles(
     .insert(Paddle)
     .insert(Player1);
 
-    let shape = Mesh2dHandle(meshes.add(Rectangle::new(50., 100.)));
+    shape = Mesh2dHandle(meshes.add(Rectangle::new(50., 100.)));
     commands.spawn(MaterialMesh2dBundle {
         mesh: shape,
         material: materials.add(Color::rgb(255., 255., 255.)),
