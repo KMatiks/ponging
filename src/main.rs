@@ -1,4 +1,5 @@
 use bevy::{prelude::*, sprite::*, window::*};
+use std::ops::AddAssign;
 
 /* Entity
  - Paddle
@@ -12,16 +13,13 @@ struct Ball;
 struct Paddle;
 
 #[derive(Component)]
-struct Player1;
+struct Player(u8);
 
 #[derive(Component)]
-struct Player2;
-
-#[derive(Component)]
-struct MovementSpeed { speed: f32 }
-
-#[derive(Component)]
-struct Velocity { x: f32, y: f32}
+struct Movement {
+    velocity: Vec2,
+    acceleration: Vec2
+}
 
 fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
@@ -46,8 +44,11 @@ fn spawn_paddles(
         ..default()
     })
     .insert(Paddle)
-    .insert(MovementSpeed { speed: 100. })
-    .insert(Player1);
+    .insert(Movement {
+        velocity: Vec2 { x: 0.0, y:  0.0},
+        acceleration: Vec2 { x: 0.0, y:  0.0}
+    })
+    .insert(Player(1));
 
     //Spawn Paddle entity with the following components
     commands.spawn(MaterialMesh2dBundle {
@@ -61,8 +62,11 @@ fn spawn_paddles(
         ..default()
     })
     .insert(Paddle)
-    .insert(MovementSpeed { speed: 100. })
-    .insert(Player2);
+    .insert(Movement {
+        velocity: Vec2 { x: 0.0, y:  0.0},
+        acceleration: Vec2 { x: 0.0, y:  0.0}
+    })
+    .insert(Player(2));
 }
 
 fn spawn_ball(
@@ -82,41 +86,59 @@ fn spawn_ball(
         ),
         ..default()
     })
-    .insert(Ball);
+    .insert(Ball)
+    .insert(Movement {
+        velocity: Vec2 { x: 0.0, y:  0.0},
+        acceleration: Vec2 { x: 0.0, y:  0.0}
+    });
 }
 
 fn handle_gamepad_input(
     gamepads: Res<Gamepads>,
     button_inputs: Res<ButtonInput<GamepadButton>>,
-    mut transform_query: Query<(&mut Transform, &MovementSpeed), With<Player1>>,
-    time: Res<Time>
+    mut movement_query: Query<(&Player, &mut Movement)>,
 ) {
+    let mut movement = movement_query
+        .iter_mut()
+        .find(|(player, _)| player.0 == 1)
+        .expect("Player 1 not found!")
+        .1;
+
     for gamepad in gamepads.iter() {
         if button_inputs.pressed(GamepadButton::new(gamepad, GamepadButtonType::DPadUp)) {
-            info!("Pressed DPAD Up");
-            let (mut translation, speed) = transform_query.single_mut();
-
-            translation.translation.y += speed.speed * time.delta_seconds();
+            movement.velocity = Vec2 { x: 0., y: 1. };
         } else if button_inputs.pressed(GamepadButton::new(gamepad, GamepadButtonType::DPadDown)) {
-            info!("Pressed DPAD Down");
-            let (mut translation, speed) = transform_query.single_mut();
-
-            translation.translation.y -= speed.speed * time.delta_seconds();
+            movement.velocity = Vec2 { x: 0., y: -1. };
+        } else {
+            movement.velocity = Vec2 { x: 0., y: 0. };
         }
     }
 }
 
 fn handle_keyboard_input(
     keys: Res<ButtonInput<KeyCode>>,
-    mut transform_query: Query<(&mut Transform, &MovementSpeed), With<Player2>>,
-    time: Res<Time>
+    mut movement_query: Query<(&Player, &mut Movement)>,
 ) {
-    let (mut translation, speed) = transform_query.single_mut(); 
+    let mut movement = movement_query
+        .iter_mut()
+        .find(|(player, _)| player.0 == 2)
+        .expect("Player 2 not found!")
+        .1;
 
     if keys.pressed(KeyCode::KeyW) {
-        translation.translation.y += speed.speed * time.delta_seconds();
+        movement.velocity = Vec2 { x: 0., y: 1. };
     } else if keys.pressed(KeyCode::KeyS) {
-        translation.translation.y -= speed.speed * time.delta_seconds();
+        movement.velocity = Vec2 { x: 0., y: -1. };
+    } else {
+        movement.velocity = Vec2 { x: 0., y: 0. };
+    }
+}
+
+fn apply_velocity(time: Res<Time>, mut query: Query<(&mut Transform, &mut Movement), With<Player>>) {
+    for (mut transform, mut movement) in &mut query {
+        let delta_velocity = movement.acceleration * time.elapsed_seconds();
+        movement.velocity += delta_velocity;
+        transform.translation += Vec3::new(movement.velocity.x, movement.velocity.y, 0.0);
     }
 }
 
@@ -131,6 +153,6 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, (spawn_camera, spawn_paddles, spawn_ball))
-        .add_systems(Update, (handle_keyboard_input, handle_gamepad_input ))
+        .add_systems(Update, (apply_velocity, handle_keyboard_input, handle_gamepad_input ))
         .run();
 }
