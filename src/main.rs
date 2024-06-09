@@ -1,5 +1,4 @@
 use bevy::{prelude::*, sprite::*, window::*};
-use std::ops::AddAssign;
 
 /* Entity
  - Paddle
