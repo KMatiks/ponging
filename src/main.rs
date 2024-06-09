@@ -43,9 +43,10 @@ fn spawn_paddles(
         ..default()
     })
     .insert(Paddle)
-    .insert(MovementSpeed { speed: 10. })
+    .insert(MovementSpeed { speed: 100. })
     .insert(Player1);
 
+    //Spawn Paddle entity with the following components
     commands.spawn(MaterialMesh2dBundle {
         mesh: shape,
         material: materials.add(Color::rgb(255., 255., 255.)),
@@ -57,7 +58,7 @@ fn spawn_paddles(
         ..default()
     })
     .insert(Paddle)
-    .insert(MovementSpeed { speed: 10. })
+    .insert(MovementSpeed { speed: 100. })
     .insert(Player2);
 }
 
@@ -121,6 +122,20 @@ fn handle_gamepad_input(
     }
 }
 
+fn handle_keyboard_input(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut transform_query: Query<(&mut Transform, &MovementSpeed), With<Player2>>,
+    time: Res<Time>
+) {
+    let (mut translation, speed) = transform_query.single_mut(); 
+
+    if keys.pressed(KeyCode::ArrowUp) {
+        translation.translation.y += speed.speed * time.delta_seconds();
+    } else if keys.pressed(KeyCode::ArrowDown) {
+        translation.translation.y -= speed.speed * time.delta_seconds();
+    }
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -132,6 +147,6 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, (spawn_camera, spawn_paddles, spawn_ball))
-        .add_systems(Update, handle_gamepad_input)
+        .add_systems(Update, (handle_gamepad_input, handle_keyboard_input))
         .run();
 }
