@@ -20,6 +20,9 @@ struct Player2;
 #[derive(Component)]
 struct MovementSpeed { speed: f32 }
 
+#[derive(Component)]
+struct Velocity { x: f32, y: f32}
+
 fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
@@ -85,8 +88,6 @@ fn spawn_ball(
 fn handle_gamepad_input(
     gamepads: Res<Gamepads>,
     button_inputs: Res<ButtonInput<GamepadButton>>,
-    button_axes: Res<Axis<GamepadButton>>,
-    axes: Res<Axis<GamepadAxis>>,
     mut transform_query: Query<(&mut Transform, &MovementSpeed), With<Player1>>,
     time: Res<Time>
 ) {
@@ -102,23 +103,6 @@ fn handle_gamepad_input(
 
             translation.translation.y -= speed.speed * time.delta_seconds();
         }
-
-        let right_trigger = button_axes
-            .get(GamepadButton::new(
-                gamepad,
-                GamepadButtonType::RightTrigger2,
-            ))
-            .unwrap();
-        if right_trigger.abs() > 0.01 {
-            info!("{:?} RightTrigger2 value is {}", gamepad, right_trigger);
-        }
-
-        let left_stick_x = axes
-            .get(GamepadAxis::new(gamepad, GamepadAxisType::LeftStickX))
-            .unwrap();
-        if left_stick_x.abs() > 0.01 {
-            info!("{:?} LeftStickX value is {}", gamepad, left_stick_x);
-        }
     }
 }
 
@@ -129,9 +113,9 @@ fn handle_keyboard_input(
 ) {
     let (mut translation, speed) = transform_query.single_mut(); 
 
-    if keys.pressed(KeyCode::ArrowUp) {
+    if keys.pressed(KeyCode::KeyW) {
         translation.translation.y += speed.speed * time.delta_seconds();
-    } else if keys.pressed(KeyCode::ArrowDown) {
+    } else if keys.pressed(KeyCode::KeyS) {
         translation.translation.y -= speed.speed * time.delta_seconds();
     }
 }
@@ -147,6 +131,6 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, (spawn_camera, spawn_paddles, spawn_ball))
-        .add_systems(Update, (handle_gamepad_input, handle_keyboard_input))
+        .add_systems(Update, (handle_keyboard_input, handle_gamepad_input ))
         .run();
 }
