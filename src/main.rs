@@ -1,4 +1,5 @@
 use bevy::{prelude::*, sprite::*, window::*};
+use rand::Rng;
 
 /* Entity
  - Paddle
@@ -74,6 +75,7 @@ fn spawn_ball(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let shape = Mesh2dHandle(meshes.add(Circle { radius: 5.0 }));
+    let theta = rand::thread_rng().gen_range(0.0 .. 2.0*std::f32::consts::PI);
 
     commands.spawn(MaterialMesh2dBundle {
         mesh: shape.clone(),
@@ -87,7 +89,7 @@ fn spawn_ball(
     })
     .insert(Ball)
     .insert(Movement {
-        velocity: Vec2 { x: 0.0, y:  0.0},
+        velocity: Vec2 { x: f32::cos(theta), y:  f32::sin(theta)},
         acceleration: Vec2 { x: 0.0, y:  0.0}
     });
 }
@@ -125,6 +127,7 @@ fn handle_keyboard_input(
         .1;
 
     if keys.pressed(KeyCode::KeyW) {
+        info!("pressed!");
         movement.velocity = Vec2 { x: 0., y: 1. };
     } else if keys.pressed(KeyCode::KeyS) {
         movement.velocity = Vec2 { x: 0., y: -1. };
@@ -133,13 +136,18 @@ fn handle_keyboard_input(
     }
 }
 
-fn apply_velocity(time: Res<Time>, mut query: Query<(&mut Transform, &mut Movement), With<Player>>) {
+fn apply_velocity(time: Res<Time>, mut query: Query<(&mut Transform, &mut Movement)>) {
     for (mut transform, mut movement) in &mut query {
         let delta_velocity = movement.acceleration * time.elapsed_seconds();
         movement.velocity += delta_velocity;
         transform.translation += Vec3::new(movement.velocity.x, movement.velocity.y, 0.0);
     }
 }
+
+
+// fn handle_collisions(mut ) {
+    
+// }
 
 fn main() {
     App::new()
