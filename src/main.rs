@@ -12,7 +12,7 @@ struct Ball;
 struct Paddle;
 
 #[derive(Component)]
-struct Wall;
+struct CollisionArea;
 
 #[derive(Component)]
 struct Player(u8);
@@ -158,8 +158,10 @@ fn handle_collisions(
     mut collider_query: Query<(&Transform, Option<&Paddle>), With<Collider>>,
 ) {
     let (ball_transform, mut ball_movement) = ball_query.single_mut();
+
     for (collider_transform, maybe_paddle) in &collider_query {
         let collider_pos = collider_transform.translation.truncate();
+
         if let Some(_paddle) = maybe_paddle {
             let ball_pos = ball_transform.translation.truncate();
             let circle_bound = BoundingCircle::new(ball_pos, 5.0);
@@ -170,8 +172,19 @@ fn handle_collisions(
                 let reflection = ball_movement.velocity - 2.0 * ball_movement.velocity.dot(collision_normal) * collision_normal;
                 ball_movement.velocity = reflection;
             }
+
+            let screen_collision_area = Aabb2d::new(Vec2::new(0.0, 0.0), Vec2::new(WIDTH / 2.0, HEIGHT / 2.0));
+            if !circle_bound.intersects(&screen_collision_area) {
+                let collision_normal = (ball_pos - collider_pos).normalize();
+                let reflection = ball_movement.velocity - 2.0 * ball_movement.velocity.dot(collision_normal) * collision_normal;
+                ball_movement.velocity = reflection;
+            }
         }
     }
+}
+
+fn spawn_collision_area(mut commands: Commands) {
+    commands.spawn(CollisionArea).insert(Collider);
 }
 
 fn main() {
@@ -184,7 +197,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_systems(Startup, (spawn_camera, spawn_paddles, spawn_ball))
+        .add_systems(Startup, (spawn_camera, spawn_paddles, spawn_ball, spawn_collision_area))
         .add_systems(Update, (apply_velocity, handle_keyboard_input, handle_gamepad_input, handle_collisions))
         .run();
 }
