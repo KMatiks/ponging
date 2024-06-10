@@ -5,6 +5,9 @@ use bevy::{math::bounding::*, prelude::*, render::{settings::{Backends, RenderCr
 use rand::Rng;
 
 
+//rotate gear and add sprite
+// move up rotate clockwise and vice versa
+
 const WIDTH: f32 = 858.0;
 const HEIGHT: f32 = 525.0;
 const BALL_RADIUS: f32 = 5.0;
@@ -31,8 +34,9 @@ struct Player(u8);
 struct Movement {
     velocity: Vec2,
     acceleration: Vec2,
-    min_speed:f32,
-    max_speed: f32
+    min_speed:f32, //friction up to
+    max_speed: f32,
+    mu: f32
 }
 
 #[derive(Component)]
@@ -66,7 +70,8 @@ fn spawn_paddles(
         velocity: Vec2 { x: 0.0, y:  0.0},
         acceleration: Vec2 { x: 0.0, y:  0.0},
         min_speed: 0.0,
-        max_speed: 0.0
+        max_speed: 0.0,
+        mu: 0.0,
     })
     .insert(Collider)
     .insert(Player(1));
@@ -87,7 +92,8 @@ fn spawn_paddles(
         velocity: Vec2 { x: 0.0, y:  0.0},
         acceleration: Vec2 { x: 0.0, y:  0.0},
         min_speed: 0.0,
-        max_speed: 0.0
+        max_speed: 0.0,
+        mu: 0.0,
     })
     .insert(Collider)
     .insert(Player(2));
@@ -117,6 +123,7 @@ fn spawn_ball(
         acceleration: Vec2 { x: 0.0, y:  0.0},
         min_speed: 0.0,
         max_speed: 0.0,
+        mu: 0.0,
     });
 }
 
@@ -191,11 +198,7 @@ fn handle_ball_paddle_collisions(
     }
 }
 
-
-//Send event with point of collisions
-
-// fn handle_ball_wall_collisions(mut &bal)
-
+//Add timer to avoid multiple collision calculations
 fn handle_ball_boundary_collisions(
     mut ball_query: Query<(&Transform, &mut Movement), With<Ball>>,
 ) {
@@ -207,7 +210,6 @@ fn handle_ball_boundary_collisions(
         let collision_normal = (ball_pos - boundary_pos).normalize();
         ball_movement.velocity = reflect_vec2(ball_movement.velocity, collision_normal);
     }
-
 
     if ball_pos.y - BALL_RADIUS < -HEIGHT / 2.0 {
         let boundary_pos = Vec2::new(ball_pos.x, -HEIGHT / 2.0);
