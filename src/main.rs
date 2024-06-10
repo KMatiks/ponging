@@ -1,4 +1,5 @@
 mod math;
+use math::reflect_vec2;
 
 use bevy::{math::bounding::*, prelude::*, render::{settings::{Backends, RenderCreation, WgpuSettings}, RenderPlugin}, sprite::*, window::*};
 use rand::Rng;
@@ -6,6 +7,8 @@ use rand::Rng;
 
 const WIDTH: f32 = 858.0;
 const HEIGHT: f32 = 525.0;
+const BALL_RADIUS: f32 = 5.0;
+const PADDLE_RADIUS: f32 = 15.0;
 
 #[derive(Component)]
 struct Ball;
@@ -17,12 +20,19 @@ struct Paddle;
 struct CollisionArea;
 
 #[derive(Component)]
+struct CircleCollider {
+    radius: f32
+}
+
+#[derive(Component)]
 struct Player(u8);
 
 #[derive(Component)]
 struct Movement {
     velocity: Vec2,
-    acceleration: Vec2
+    acceleration: Vec2,
+    min_speed:f32,
+    max_speed: f32
 }
 
 #[derive(Component)]
@@ -38,9 +48,8 @@ fn spawn_paddles(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
 
-    let radius = 30.0;
-    let shape = Mesh2dHandle(meshes.add(Circle { radius }));
-    let x_pos = WIDTH / 2.0 - radius;
+    let shape = Mesh2dHandle(meshes.add(Circle { radius: PADDLE_RADIUS }));
+    let x_pos = WIDTH / 2.0 - PADDLE_RADIUS;
 
     commands.spawn(MaterialMesh2dBundle {
         mesh: shape.clone(),
@@ -55,7 +64,9 @@ fn spawn_paddles(
     .insert(Paddle)
     .insert(Movement {
         velocity: Vec2 { x: 0.0, y:  0.0},
-        acceleration: Vec2 { x: 0.0, y:  0.0}
+        acceleration: Vec2 { x: 0.0, y:  0.0},
+        min_speed: 0.0,
+        max_speed: 0.0
     })
     .insert(Collider)
     .insert(Player(1));
@@ -74,7 +85,9 @@ fn spawn_paddles(
     .insert(Paddle)
     .insert(Movement {
         velocity: Vec2 { x: 0.0, y:  0.0},
-        acceleration: Vec2 { x: 0.0, y:  0.0}
+        acceleration: Vec2 { x: 0.0, y:  0.0},
+        min_speed: 0.0,
+        max_speed: 0.0
     })
     .insert(Collider)
     .insert(Player(2));
@@ -85,7 +98,7 @@ fn spawn_ball(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let shape = Mesh2dHandle(meshes.add(Circle { radius: 5.0 }));
+    let shape = Mesh2dHandle(meshes.add(Circle { radius: BALL_RADIUS }));
     let theta = rand::thread_rng().gen_range(0.0 .. 2.0*std::f32::consts::PI);
 
     commands.spawn(MaterialMesh2dBundle {
@@ -101,7 +114,9 @@ fn spawn_ball(
     .insert(Ball)
     .insert(Movement {
         velocity: Vec2 { x: f32::cos(theta), y:  f32::sin(theta)},
-        acceleration: Vec2 { x: 0.0, y:  0.0}
+        acceleration: Vec2 { x: 0.0, y:  0.0},
+        min_speed: 0.0,
+        max_speed: 0.0,
     });
 }
 
@@ -155,38 +170,50 @@ fn apply_velocity(time: Res<Time>, mut query: Query<(&mut Transform, &mut Moveme
     }
 }
 
-fn handle_collisions(
+///Checks for collisions between ball and all other circle colliders
+fn handle_ball_paddle_collisions(
     mut ball_query: Query<(&Transform, &mut Movement), With<Ball>>,
-    mut collider_query: Query<(&Transform, Option<&Paddle>), With<Collider>>,
+    paddle_query: Query<(&Transform, &Paddle), With<Collider>>,
 ) {
     let (ball_transform, mut ball_movement) = ball_query.single_mut();
+    let ball_pos = ball_transform.translation.truncate();
 
-    for (collider_transform, maybe_paddle) in &collider_query {
-        let collider_pos = collider_transform.translation.truncate();
+    for (paddle_transform, paddle) in &paddle_query {
+        let paddle_pos = paddle_transform.translation.truncate();
 
-        if let Some(_paddle) = maybe_paddle {
-            let ball_pos = ball_transform.translation.truncate();
-            let circle_bound = BoundingCircle::new(ball_pos, 5.0);
-            let paddle_bound = BoundingCircle::new(collider_transform.translation.truncate(), 15.0);
+        let distance = (paddle_pos - ball_pos).length();
 
-            if circle_bound.intersects(&paddle_bound) {
-                let collision_normal = (ball_pos - collider_pos).normalize();
-                let reflection = ball_movement.velocity - 2.0 * ball_movement.velocity.dot(collision_normal) * collision_normal;
-                ball_movement.velocity = reflection;
-            }
-
-            let screen_collision_area = Aabb2d::new(Vec2::new(0.0, 0.0), Vec2::new(WIDTH / 2.0, HEIGHT / 2.0));
-            if !circle_bound.intersects(&screen_collision_area) {
-                let collision_normal = (ball_pos - collider_pos).normalize();
-                let reflection = ball_movement.velocity - 2.0 * ball_movement.velocity.dot(collision_normal) * collision_normal;
-                ball_movement.velocity = reflection;
-            }
+        if distance <= BALL_RADIUS + PADDLE_RADIUS {
+            let collision_normal = (ball_pos - paddle_pos).normalize();
+            ball_movement.velocity = reflect_vec2(ball_movement.velocity, collision_normal);
         }
+
     }
 }
 
-fn spawn_collision_area(mut commands: Commands) {
-    commands.spawn(CollisionArea).insert(Collider);
+
+//Send event with point of collisions
+
+// fn handle_ball_wall_collisions(mut &bal)
+
+fn handle_ball_boundary_collisions(
+    mut ball_query: Query<(&Transform, &mut Movement), With<Ball>>,
+) {
+    let (ball_transform, mut ball_movement) = ball_query.single_mut();
+    let ball_pos = ball_transform.translation.truncate();
+
+    if ball_pos.y + BALL_RADIUS > HEIGHT / 2.0 {
+        let boundary_pos = Vec2::new(ball_pos.x, HEIGHT / 2.0);
+        let collision_normal = (ball_pos - boundary_pos).normalize();
+        ball_movement.velocity = reflect_vec2(ball_movement.velocity, collision_normal);
+    }
+
+
+    if ball_pos.y - BALL_RADIUS < -HEIGHT / 2.0 {
+        let boundary_pos = Vec2::new(ball_pos.x, -HEIGHT / 2.0);
+        let collision_normal = (ball_pos - boundary_pos).normalize();
+        ball_movement.velocity = reflect_vec2(ball_movement.velocity, collision_normal);
+    }
 }
 
 fn main() {
@@ -212,7 +239,7 @@ fn main() {
                 ..default()
             //------------------------------------------------------------------
             }))
-        .add_systems(Startup, (spawn_camera, spawn_paddles, spawn_ball, spawn_collision_area))
-        .add_systems(Update, (apply_velocity, handle_keyboard_input, handle_gamepad_input, handle_collisions))
+        .add_systems(Startup, (spawn_camera, spawn_paddles, spawn_ball))
+        .add_systems(Update, (apply_velocity, handle_keyboard_input, handle_gamepad_input, handle_ball_paddle_collisions, handle_ball_boundary_collisions))
         .run();
 }
