@@ -1,3 +1,5 @@
+mod math;
+
 use bevy::{math::bounding::*, prelude::*, render::{settings::{Backends, RenderCreation, WgpuSettings}, RenderPlugin}, sprite::*, window::*};
 use rand::Rng;
 
