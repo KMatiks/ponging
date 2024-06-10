@@ -1,16 +1,18 @@
-use bevy::{prelude::*, sprite::*, window::*};
+use bevy::{prelude::*, sprite::*, window::*, math::bounding::*};
 use rand::Rng;
 
-/* Entity
- - Paddle
-*/
 
-//Paddle component - identify entity that has this component is a paddle
+const WIDTH: f32 = 858.0;
+const HEIGHT: f32 = 525.0;
+
 #[derive(Component)]
 struct Ball;
 
 #[derive(Component)]
 struct Paddle;
+
+#[derive(Component)]
+struct Wall;
 
 #[derive(Component)]
 struct Player(u8);
@@ -20,6 +22,9 @@ struct Movement {
     velocity: Vec2,
     acceleration: Vec2
 }
+
+#[derive(Component)]
+struct Collider;
 
 fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
@@ -31,13 +36,15 @@ fn spawn_paddles(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
 
-    let shape = Mesh2dHandle(meshes.add(Rectangle::new(10., 75.)));
+    let radius = 30.0;
+    let shape = Mesh2dHandle(meshes.add(Circle { radius }));
+    let x_pos = WIDTH / 2.0 - radius;
 
     commands.spawn(MaterialMesh2dBundle {
         mesh: shape.clone(),
         material: materials.add(Color::rgb(255., 255., 255.)),
         transform: Transform::from_xyz(
-            -419.0,
+            -x_pos,
             0.0,
             0.0,
         ),
@@ -48,6 +55,7 @@ fn spawn_paddles(
         velocity: Vec2 { x: 0.0, y:  0.0},
         acceleration: Vec2 { x: 0.0, y:  0.0}
     })
+    .insert(Collider)
     .insert(Player(1));
 
     //Spawn Paddle entity with the following components
@@ -55,7 +63,7 @@ fn spawn_paddles(
         mesh: shape,
         material: materials.add(Color::rgb(255., 255., 255.)),
         transform: Transform::from_xyz(
-            419.0,
+            x_pos,
             0.0,
             0.0,
         ),
@@ -66,6 +74,7 @@ fn spawn_paddles(
         velocity: Vec2 { x: 0.0, y:  0.0},
         acceleration: Vec2 { x: 0.0, y:  0.0}
     })
+    .insert(Collider)
     .insert(Player(2));
 }
 
@@ -144,22 +153,38 @@ fn apply_velocity(time: Res<Time>, mut query: Query<(&mut Transform, &mut Moveme
     }
 }
 
+fn handle_collisions(
+    mut ball_query: Query<(&Transform, &mut Movement), With<Ball>>,
+    mut collider_query: Query<(&Transform, Option<&Paddle>), With<Collider>>,
+) {
+    let (ball_transform, mut ball_movement) = ball_query.single_mut();
+    for (collider_transform, maybe_paddle) in &collider_query {
+        let collider_pos = collider_transform.translation.truncate();
+        if let Some(_paddle) = maybe_paddle {
+            let ball_pos = ball_transform.translation.truncate();
+            let circle_bound = BoundingCircle::new(ball_pos, 5.0);
+            let paddle_bound = BoundingCircle::new(collider_transform.translation.truncate(), 15.0);
 
-// fn handle_collisions(mut ) {
-    
-// }
+            if circle_bound.intersects(&paddle_bound) {
+                let collision_normal = (ball_pos - collider_pos).normalize();
+                let reflection = ball_movement.velocity - 2.0 * ball_movement.velocity.dot(collision_normal) * collision_normal;
+                ball_movement.velocity = reflection;
+            }
+        }
+    }
+}
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                resolution: WindowResolution::new(858., 525.).with_scale_factor_override(1.0),
+                resolution: WindowResolution::new(WIDTH, HEIGHT).with_scale_factor_override(1.0),
                 resizable: false,
                 ..default()
             }),
             ..default()
         }))
         .add_systems(Startup, (spawn_camera, spawn_paddles, spawn_ball))
-        .add_systems(Update, (apply_velocity, handle_keyboard_input, handle_gamepad_input ))
+        .add_systems(Update, (apply_velocity, handle_keyboard_input, handle_gamepad_input, handle_collisions))
         .run();
 }
