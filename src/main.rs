@@ -1,9 +1,17 @@
 mod math;
 use math::reflect_vec2;
 
-use bevy::{math::bounding::*, prelude::*, render::{settings::{Backends, RenderCreation, WgpuSettings}, RenderPlugin}, sprite::*, window::*};
+use bevy::{
+    math::bounding::*,
+    prelude::*,
+    render::{
+        settings::{Backends, RenderCreation, WgpuSettings},
+        RenderPlugin,
+    },
+    sprite::*,
+    window::*,
+};
 use rand::Rng;
-
 
 //rotate gear and add sprite
 // move up rotate clockwise and vice versa
@@ -24,7 +32,7 @@ struct CollisionArea;
 
 #[derive(Component)]
 struct CircleCollider {
-    radius: f32
+    radius: f32,
 }
 
 #[derive(Component)]
@@ -34,9 +42,9 @@ struct Player(u8);
 struct Movement {
     velocity: Vec2,
     acceleration: Vec2,
-    min_speed:f32, //friction up to
+    min_speed: f32, //friction up to
     max_speed: f32,
-    mu: f32
+    mu: f32,
 }
 
 #[derive(Component)]
@@ -51,52 +59,47 @@ fn spawn_paddles(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-
-    let shape = Mesh2dHandle(meshes.add(Circle { radius: PADDLE_RADIUS }));
+    let shape = Mesh2dHandle(meshes.add(Circle {
+        radius: PADDLE_RADIUS,
+    }));
     let x_pos = WIDTH / 2.0 - PADDLE_RADIUS;
 
-    commands.spawn(MaterialMesh2dBundle {
-        mesh: shape.clone(),
-        material: materials.add(Color::rgb(255., 255., 255.)),
-        transform: Transform::from_xyz(
-            -x_pos,
-            0.0,
-            0.0,
-        ),
-        ..default()
-    })
-    .insert(Paddle)
-    .insert(Movement {
-        velocity: Vec2 { x: 0.0, y:  0.0},
-        acceleration: Vec2 { x: 0.0, y:  0.0},
-        min_speed: 0.0,
-        max_speed: 0.0,
-        mu: 0.0,
-    })
-    .insert(Collider)
-    .insert(Player(1));
+    commands
+        .spawn(MaterialMesh2dBundle {
+            mesh: shape.clone(),
+            material: materials.add(Color::rgb(255., 255., 255.)),
+            transform: Transform::from_xyz(-x_pos, 0.0, 0.0),
+            ..default()
+        })
+        .insert(Paddle)
+        .insert(Movement {
+            velocity: Vec2 { x: 0.0, y: 0.0 },
+            acceleration: Vec2 { x: 0.0, y: 0.0 },
+            min_speed: 0.0,
+            max_speed: 0.0,
+            mu: 0.0,
+        })
+        .insert(Collider)
+        .insert(Player(1));
 
     //Spawn Paddle entity with the following components
-    commands.spawn(MaterialMesh2dBundle {
-        mesh: shape,
-        material: materials.add(Color::rgb(255., 255., 255.)),
-        transform: Transform::from_xyz(
-            x_pos,
-            0.0,
-            0.0,
-        ),
-        ..default()
-    })
-    .insert(Paddle)
-    .insert(Movement {
-        velocity: Vec2 { x: 0.0, y:  0.0},
-        acceleration: Vec2 { x: 0.0, y:  0.0},
-        min_speed: 0.0,
-        max_speed: 0.0,
-        mu: 0.0,
-    })
-    .insert(Collider)
-    .insert(Player(2));
+    commands
+        .spawn(MaterialMesh2dBundle {
+            mesh: shape,
+            material: materials.add(Color::rgb(255., 255., 255.)),
+            transform: Transform::from_xyz(x_pos, 0.0, 0.0),
+            ..default()
+        })
+        .insert(Paddle)
+        .insert(Movement {
+            velocity: Vec2 { x: 0.0, y: 0.0 },
+            acceleration: Vec2 { x: 0.0, y: 0.0 },
+            min_speed: 0.0,
+            max_speed: 0.0,
+            mu: 0.0,
+        })
+        .insert(Collider)
+        .insert(Player(2));
 }
 
 fn spawn_ball(
@@ -104,27 +107,29 @@ fn spawn_ball(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let shape = Mesh2dHandle(meshes.add(Circle { radius: BALL_RADIUS }));
-    let theta = rand::thread_rng().gen_range(0.0 .. 2.0*std::f32::consts::PI);
+    let shape = Mesh2dHandle(meshes.add(Circle {
+        radius: BALL_RADIUS,
+    }));
+    let theta = rand::thread_rng().gen_range(0.0..2.0 * std::f32::consts::PI);
 
-    commands.spawn(MaterialMesh2dBundle {
-        mesh: shape.clone(),
-        material: materials.add(Color::rgb(255., 255., 255.)),
-        transform: Transform::from_xyz(
-            0.0,
-            0.0,
-            0.0,
-        ),
-        ..default()
-    })
-    .insert(Ball)
-    .insert(Movement {
-        velocity: Vec2 { x: f32::cos(theta), y:  f32::sin(theta)},
-        acceleration: Vec2 { x: 0.0, y:  0.0},
-        min_speed: 0.0,
-        max_speed: 0.0,
-        mu: 0.0,
-    });
+    commands
+        .spawn(MaterialMesh2dBundle {
+            mesh: shape.clone(),
+            material: materials.add(Color::rgb(255., 255., 255.)),
+            transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            ..default()
+        })
+        .insert(Ball)
+        .insert(Movement {
+            velocity: Vec2 {
+                x: f32::cos(theta),
+                y: f32::sin(theta),
+            },
+            acceleration: Vec2 { x: 0.0, y: 0.0 },
+            min_speed: 0.0,
+            max_speed: 0.0,
+            mu: 0.0,
+        });
 }
 
 fn handle_gamepad_input(
@@ -194,14 +199,11 @@ fn handle_ball_paddle_collisions(
             let collision_normal = (ball_pos - paddle_pos).normalize();
             ball_movement.velocity = reflect_vec2(ball_movement.velocity, collision_normal);
         }
-
     }
 }
 
 //Add timer to avoid multiple collision calculations
-fn handle_ball_boundary_collisions(
-    mut ball_query: Query<(&Transform, &mut Movement), With<Ball>>,
-) {
+fn handle_ball_boundary_collisions(mut ball_query: Query<(&Transform, &mut Movement), With<Ball>>) {
     let (ball_transform, mut ball_movement) = ball_query.single_mut();
     let ball_pos = ball_transform.translation.truncate();
 
@@ -220,28 +222,39 @@ fn handle_ball_boundary_collisions(
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    resolution: WindowResolution::new(WIDTH, HEIGHT).with_scale_factor_override(1.0),
-                    resizable: false,
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: WindowResolution::new(WIDTH, HEIGHT)
+                            .with_scale_factor_override(1.0),
+                        resizable: false,
+                        ..default()
+                    }),
                     ..default()
+                })
+                //------------------------------------------------------------------
+                // Fix for windows terminal error spam due to wgpu bug
+                // See this issue: https://github.com/bevyengine/bevy/issues/9975
+                .set(RenderPlugin {
+                    render_creation: RenderCreation::Automatic(WgpuSettings {
+                        #[cfg(target_os = "windows")]
+                        backends: Some(Backends::VULKAN),
+                        ..default()
+                    }),
+                    ..default() //------------------------------------------------------------------
                 }),
-                ..default()
-            })
-            //------------------------------------------------------------------
-            // Fix for windows terminal error spam due to wgpu bug
-            // See this issue: https://github.com/bevyengine/bevy/issues/9975
-            .set(RenderPlugin {
-                render_creation: RenderCreation::Automatic(WgpuSettings {
-                    #[cfg(target_os = "windows")]
-                    backends: Some(Backends::VULKAN),
-                    ..default()
-                }),
-                ..default()
-            //------------------------------------------------------------------
-            }))
+        )
         .add_systems(Startup, (spawn_camera, spawn_paddles, spawn_ball))
-        .add_systems(Update, (apply_velocity, handle_keyboard_input, handle_gamepad_input, handle_ball_paddle_collisions, handle_ball_boundary_collisions))
+        .add_systems(
+            Update,
+            (
+                apply_velocity,
+                handle_keyboard_input,
+                handle_gamepad_input,
+                handle_ball_paddle_collisions,
+                handle_ball_boundary_collisions,
+            ),
+        )
         .run();
 }
