@@ -12,19 +12,21 @@ pub fn spawn_ball(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     let shape = Mesh2dHandle(meshes.add(Circle {
         radius: BALL_RADIUS,
     }));
     let theta = rand::thread_rng().gen_range(0.0..2.0 * std::f32::consts::PI);
 
-    commands
-        .spawn(MaterialMesh2dBundle {
-            mesh: shape.clone(),
-            material: materials.add(Color::rgb(255., 255., 255.)),
-            transform: Transform::from_xyz(0.0, 0.0, 0.0),
-            ..default()
-        })
+    let ball = commands
+        .spawn((
+            Transform::default(),
+            GlobalTransform::default(),
+            Visibility::default(),
+            InheritedVisibility::default(),
+            ViewVisibility::default(),
+        ))
         .insert(Ball)
         .insert(Movement {
             velocity: Vec2 {
@@ -35,7 +37,15 @@ pub fn spawn_ball(
             min_speed: 0.0,
             max_speed: 0.0,
             friction: 0.0,
-        });
+        }).id();
+    
+    // Spawn a sprite as a child of the ball
+    let sprite = commands.spawn(SpriteBundle {
+        texture: asset_server.load("gear.png"),
+        ..default()
+    }).id();
+    
+    commands.entity(ball).push_children(&[sprite]);
 }
 
 /// Checks for collisions between ball and all other circle colliders
